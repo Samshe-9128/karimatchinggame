@@ -1,37 +1,18 @@
-export default function MusicControl({
-  musicOn,
-  setMusicOn,
-  hasMusic,
-}) {
+export default function MusicControl({ musicOn, toggleMusic, hasMusic }) {
   if (!hasMusic) {
     return null;
   }
 
   return (
     <button
-      className={`music-control ${
-        musicOn
-          ? "music-on"
-          : "music-off"
-      }`}
-      onClick={() =>
-        setMusicOn(
-          (value) => !value,
-        )
-      }
-      aria-label={
-        musicOn
-          ? "Turn music off"
-          : "Turn music on"
-      }
+      type="button"
+      className={`music-control ${musicOn ? "music-on" : "music-off"}`}
+      onClick={toggleMusic}
+      aria-label={musicOn ? "Turn music off" : "Turn music on"}
     >
-      <span className="music-symbol">
-        {musicOn ? "♫" : "×"}
-      </span>
+      <span className="music-symbol">{musicOn ? "♫" : "×"}</span>
 
-      {musicOn
-        ? "Music on"
-        : "Music off"}
+      <span>{musicOn ? "Music on" : "Music off"}</span>
     </button>
   );
 }

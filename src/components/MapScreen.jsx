@@ -1,5 +1,4 @@
-import { useState } from "react";
-
+import { useEffect, useRef, useState } from "react";
 import { MAX_LEVEL, getVersion } from "../utils/gameConfig";
 
 export default function MapScreen({
@@ -9,14 +8,32 @@ export default function MapScreen({
   onStats,
 }) {
   const [jumpLevel, setJumpLevel] = useState("");
+  const roadWrapperRef = useRef(null);
+
+  // Auto-scroll to current level when component mounts or highestUnlocked changes
+  useEffect(() => {
+    if (roadWrapperRef.current) {
+      const currentLevelElement = roadWrapperRef.current.querySelector(
+        `[data-level="${highestUnlocked}"]`,
+      );
+      if (currentLevelElement) {
+        // Use a small timeout to ensure the DOM is fully laid out before scrolling
+        const scrollTimeout = setTimeout(() => {
+          currentLevelElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 0);
+        return () => clearTimeout(scrollTimeout);
+      }
+    }
+  }, [highestUnlocked]);
 
   function handleJump() {
     const value = Number(jumpLevel);
-
     if (!Number.isInteger(value) || value < 1 || value > highestUnlocked) {
       return;
     }
-
     onStartLevel(value);
     setJumpLevel("");
   }
@@ -28,9 +45,7 @@ export default function MapScreen({
       <header className="map-header">
         <div>
           <p className="eyebrow">KARI × SAM</p>
-
           <h1>Memory Road</h1>
-
           <p className="map-subtitle">
             {currentVersion.emoji} {currentVersion.name}
           </p>
@@ -38,9 +53,7 @@ export default function MapScreen({
 
         <div className="map-counter">
           <strong>{completedLevels.size}</strong>
-
           <span>/{MAX_LEVEL}</span>
-
           <small>completed</small>
         </div>
       </header>
@@ -48,9 +61,7 @@ export default function MapScreen({
       <section className="continue-card">
         <div>
           <span>NEXT STOP</span>
-
           <strong>Level {highestUnlocked}</strong>
-
           <small>
             {highestUnlocked === 1
               ? "Your first little challenge."
@@ -61,7 +72,6 @@ export default function MapScreen({
                   : "Continue where you left off."}
           </small>
         </div>
-
         <button onClick={() => onStartLevel(highestUnlocked)}>
           Continue →
         </button>
@@ -82,10 +92,8 @@ export default function MapScreen({
               }
             }}
           />
-
           <button onClick={handleJump}>Go</button>
         </div>
-
         <button className="stats-button" onClick={onStats}>
           📊 Stats
         </button>
@@ -99,87 +107,74 @@ export default function MapScreen({
         </div>
       )}
 
-      <section className="road-wrapper">
+      <section className="road-wrapper" ref={roadWrapperRef}>
         <div className="road">
           <div className="road-center" />
 
-          {Array.from(
-            {
-              length: MAX_LEVEL,
-            },
-            (_, index) => {
-              const levelNumber = index + 1;
+          {Array.from({ length: MAX_LEVEL }, (_, index) => {
+            const levelNumber = index + 1;
+            const unlocked = levelNumber <= highestUnlocked;
+            const completed = completedLevels.has(levelNumber);
+            const current = levelNumber === highestUnlocked && !completed;
+            const side = levelNumber % 2 === 0 ? "right" : "left";
+            const version = getVersion(levelNumber);
+            const isChapterStart = levelNumber === version.min;
+            const isBoss = levelNumber >= 4001 && levelNumber % 50 === 0;
 
-              const unlocked = levelNumber <= highestUnlocked;
-
-              const completed = completedLevels.has(levelNumber);
-
-              const current = levelNumber === highestUnlocked && !completed;
-
-              const side = levelNumber % 2 === 0 ? "right" : "left";
-
-              const version = getVersion(levelNumber);
-
-              const isChapterStart = levelNumber === version.min;
-
-              const isBoss = levelNumber >= 4001 && levelNumber % 50 === 0;
-
-              return (
-                <div
-                  key={levelNumber}
-                  className={`
-                    road-level
-                    ${side}
-                    ${unlocked ? "unlocked" : "locked"}
-                    ${completed ? "completed" : ""}
-                    ${current ? "current" : ""}
-                    ${isChapterStart ? "chapter-start" : ""}
-                  `}
-                  data-level={levelNumber}
-                >
-                  {isChapterStart && (
-                    <div className="chapter-label">
-                      {version.emoji} V{version.id} · {version.name}
-                    </div>
-                  )}
-
-                  <span className="road-connector" />
-
-                  <button
-                    className={`level-node ${isBoss ? "boss-node" : ""}`}
-                    disabled={!unlocked}
-                    onClick={() => onStartLevel(levelNumber)}
-                  >
-                    {completed
-                      ? "✓"
-                      : isBoss
-                        ? "👑"
-                        : unlocked
-                          ? levelNumber
-                          : "🔒"}
-                  </button>
-
-                  <div className="road-label">
-                    <strong>Level {levelNumber}</strong>
-
-                    <small>
-                      {isBoss
-                        ? "BOSS"
-                        : completed
-                          ? "completed"
-                          : current
-                            ? "next stop"
-                            : unlocked
-                              ? "play again"
-                              : "locked"}
-                    </small>
+            return (
+              <div
+                key={levelNumber}
+                className={`
+                  road-level
+                  ${side}
+                  ${unlocked ? "unlocked" : "locked"}
+                  ${completed ? "completed" : ""}
+                  ${current ? "current" : ""}
+                  ${isChapterStart ? "chapter-start" : ""}
+                `}
+                data-level={levelNumber}
+              >
+                {isChapterStart && (
+                  <div className="chapter-label">
+                    {version.emoji} V{version.id} · {version.name}
                   </div>
+                )}
 
-                  {current && <span className="map-van">🚐</span>}
+                <span className="road-connector" />
+
+                <button
+                  className={`level-node ${isBoss ? "boss-node" : ""}`}
+                  disabled={!unlocked}
+                  onClick={() => onStartLevel(levelNumber)}
+                >
+                  {completed
+                    ? "✓"
+                    : isBoss
+                      ? "👑"
+                      : unlocked
+                        ? levelNumber
+                        : "🔒"}
+                </button>
+
+                <div className="road-label">
+                  <strong>Level {levelNumber}</strong>
+                  <small>
+                    {isBoss
+                      ? "BOSS"
+                      : completed
+                        ? "completed"
+                        : current
+                          ? "next stop"
+                          : unlocked
+                            ? "play again"
+                            : "locked"}
+                  </small>
                 </div>
-              );
-            },
-          )}
+
+                {current && <span className="map-van">🚐</span>}
+              </div>
+            );
+          })}
         </div>
       </section>
 

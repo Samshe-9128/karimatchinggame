@@ -14,11 +14,16 @@ export default function App() {
   const music = useMusic();
   const game = useMemoryGame();
 
+  // Start music from a real user interaction.
+  function startMusic() {
+    music.startMusic?.();
+  }
+
   return (
     <div className="app">
       <MusicControl
         musicOn={music.musicOn}
-        setMusicOn={music.setMusicOn}
+        toggleMusic={music.toggleMusic}
         hasMusic={music.hasMusic}
       />
 
@@ -26,8 +31,14 @@ export default function App() {
         <MapScreen
           highestUnlocked={game.highestUnlocked}
           completedLevels={game.completedLevels}
-          onStartLevel={game.startLevel}
-          onStats={game.openStats}
+          onStartLevel={(level) => {
+            startMusic();
+            game.startLevel(level);
+          }}
+          onStats={() => {
+            startMusic();
+            game.openStats();
+          }}
         />
       )}
 
@@ -49,9 +60,19 @@ export default function App() {
           hinting={game.hinting}
           blackout={game.blackout}
           config={game.config}
-          onHint={game.useHint}
-          onCardClick={game.handleCardClick}
-          onBack={game.backToMap}
+          onHint={() => {
+            startMusic();
+            game.useHint();
+          }}
+          onCardClick={(cardId) => {
+            startMusic();
+            game.handleCardClick(cardId);
+          }}
+          onRestart={game.restartLevel}
+          onBack={() => {
+            startMusic();
+            game.backToMap();
+          }}
         />
       )}
 
@@ -64,16 +85,28 @@ export default function App() {
           traveling={game.traveling}
           combo={game.combo}
           lives={game.lives}
-          onNext={game.goToNextLevel}
-          onBack={game.backToMap}
+          onNext={() => {
+            startMusic();
+            game.goToNextLevel();
+          }}
+          onBack={() => {
+            startMusic();
+            game.backToMap();
+          }}
         />
       )}
 
       {game.screen === "lost" && (
         <LostScreen
           level={game.level}
-          onRetry={() => game.startLevel(game.level)}
-          onBack={game.backToMap}
+          onRetry={() => {
+            startMusic();
+            game.startLevel(game.level);
+          }}
+          onBack={() => {
+            startMusic();
+            game.backToMap();
+          }}
         />
       )}
 
@@ -82,7 +115,10 @@ export default function App() {
           highestUnlocked={game.highestUnlocked}
           completedLevels={game.completedLevels}
           stats={game.stats}
-          onBack={() => game.backToMap()}
+          onBack={() => {
+            startMusic();
+            game.backToMap();
+          }}
         />
       )}
     </div>

@@ -28,12 +28,12 @@ export default function GameScreen({
   onHint,
   onCardClick,
   onBack,
+  onRestart, // ✅ new prop
 }) {
   const progress =
     config.pairs > 0 ? (matched.size / 2 / config.pairs) * 100 : 0;
 
   const columns = getBoardColumns(config.pairs);
-
   const rows = getBoardRows(cards.length, columns);
 
   return (
@@ -46,6 +46,7 @@ export default function GameScreen({
         lives={lives}
         combo={combo}
         onBack={onBack}
+        onRestart={onRestart} // ✅ pass down
       />
 
       <section className="game-heading">
@@ -91,11 +92,7 @@ export default function GameScreen({
       </section>
 
       <div className="progress-bar">
-        <div
-          style={{
-            width: `${progress}%`,
-          }}
-        />
+        <div style={{ width: `${progress}%` }} />
       </div>
 
       <section className="game-board-area">
@@ -122,7 +119,6 @@ export default function GameScreen({
         <span>
           {config.version.emoji} {config.version.name}
         </span>
-
         <span>
           {matched.size / 2} / {config.pairs}
         </span>

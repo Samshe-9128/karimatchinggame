@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-  readStorage,
-  writeStorage,
-} from "../utils/storage";
+import { readStorage, writeStorage } from "../utils/storage";
 
 const musicFiles = import.meta.glob(
   "../assets/music/*.{mp3,MP3,ogg,OGG,wav,WAV,m4a,M4A}",
@@ -18,34 +15,30 @@ const MUSIC_TRACKS = Object.values(musicFiles);
 
 export default function useMusic() {
   const [musicOn, setMusicOn] = useState(() => {
-    return (
-      readStorage("kari-memory-music", "on") !== "off"
-    );
+    return readStorage("kari-memory-music", "on") !== "off";
   });
 
   const audioRef = useRef(null);
   const musicOnRef = useRef(musicOn);
   const currentTrackRef = useRef(null);
+  const startedRef = useRef(false);
+
+  /* -----------------------------------------
+     Save preference
+  ----------------------------------------- */
 
   useEffect(() => {
     musicOnRef.current = musicOn;
 
-    writeStorage(
-      "kari-memory-music",
-      musicOn ? "on" : "off",
-    );
-
-    if (!audioRef.current) return;
-
-    if (musicOn) {
-      audioRef.current.play().catch(() => {});
-    } else {
-      audioRef.current.pause();
-    }
+    writeStorage("kari-memory-music", musicOn ? "on" : "off");
   }, [musicOn]);
 
+  /* -----------------------------------------
+     Create audio
+  ----------------------------------------- */
+
   useEffect(() => {
-    if (MUSIC_TRACKS.length === 0) {
+    if (!MUSIC_TRACKS.length) {
       return undefined;
     }
 
@@ -63,87 +56,119 @@ export default function useMusic() {
       }
 
       const available = MUSIC_TRACKS.filter(
-        (track) =>
-          track !== currentTrackRef.current,
+        (track) => track !== currentTrackRef.current,
       );
 
-      return available[
-        Math.floor(
-          Math.random() * available.length,
-        )
-      ];
+      return (
+        available[Math.floor(Math.random() * available.length)] ??
+        MUSIC_TRACKS[0]
+      );
     }
 
     function playNextTrack() {
       const nextTrack = chooseTrack();
 
       currentTrackRef.current = nextTrack;
+
       audio.src = nextTrack;
 
       if (musicOnRef.current) {
-        audio.play().catch(() => {});
+        audio
+          .play()
+          .then(() => {
+            startedRef.current = true;
+          })
+          .catch(() => {
+            // Autoplay blocked.
+          });
       }
     }
 
-    audio.addEventListener(
-      "ended",
-      playNextTrack,
-    );
+    function handleEnded() {
+      playNextTrack();
+    }
 
+    audio.addEventListener("ended", handleEnded);
+
+    /*
+     * Try immediately on page load.
+     * Desktop Chrome may allow it.
+     */
     playNextTrack();
 
     return () => {
-      audio.removeEventListener(
-        "ended",
-        playNextTrack,
-      );
+      audio.removeEventListener("ended", handleEnded);
 
       audio.pause();
       audio.src = "";
+      audio.load();
+
       audioRef.current = null;
+      currentTrackRef.current = null;
+      startedRef.current = false;
     };
   }, []);
 
-  useEffect(() => {
-    function unlockAudio() {
-      if (
-        !musicOnRef.current ||
-        !audioRef.current
-      ) {
-        return;
-      }
+  /* -----------------------------------------
+     START MUSIC DIRECTLY FROM USER ACTION
+  ----------------------------------------- */
 
-      audioRef.current.play().catch(() => {});
+  function startMusic() {
+    const audio = audioRef.current;
+
+    if (!audio || !musicOnRef.current) {
+      return;
     }
 
-    window.addEventListener(
-      "pointerdown",
-      unlockAudio,
-      { once: true },
-    );
+    audio
+      .play()
+      .then(() => {
+        startedRef.current = true;
+      })
+      .catch(() => {
+        // Browser still refused playback.
+      });
+  }
 
-    window.addEventListener(
-      "keydown",
-      unlockAudio,
-      { once: true },
-    );
+  /* -----------------------------------------
+     ON / OFF
+  ----------------------------------------- */
 
-    return () => {
-      window.removeEventListener(
-        "pointerdown",
-        unlockAudio,
-      );
+  function toggleMusic() {
+    const audio = audioRef.current;
 
-      window.removeEventListener(
-        "keydown",
-        unlockAudio,
-      );
-    };
-  }, []);
+    if (!audio) {
+      return;
+    }
+
+    if (musicOnRef.current) {
+      audio.pause();
+
+      musicOnRef.current = false;
+      setMusicOn(false);
+
+      return;
+    }
+
+    musicOnRef.current = true;
+
+    audio
+      .play()
+      .then(() => {
+        startedRef.current = true;
+        setMusicOn(true);
+      })
+      .catch(() => {
+        musicOnRef.current = false;
+        setMusicOn(false);
+      });
+  }
 
   return {
     musicOn,
     setMusicOn,
+    toggleMusic,
+    startMusic,
     hasMusic: MUSIC_TRACKS.length > 0,
   };
 }

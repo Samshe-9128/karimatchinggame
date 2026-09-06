@@ -392,9 +392,10 @@ button:focus-visible {
 .game-screen {
   width: 100%;
   height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 9px 16px 6px;
+  padding: 8px 14px 5px;
   overflow: hidden;
 }
 
@@ -409,7 +410,7 @@ button:focus-visible {
 
 .back-button {
   justify-self: start;
-  padding: 8px 12px;
+  padding: 7px 11px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.025);
@@ -430,7 +431,7 @@ button:focus-visible {
 .current-level span {
   display: block;
   color: #817686;
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 2px;
 }
 
@@ -439,14 +440,14 @@ button:focus-visible {
   margin-top: 1px;
   color: #d0a0c1;
   font-family: "Playfair Display", serif;
-  font-size: 23px;
+  font-size: 21px;
   font-weight: 500;
 }
 
 .game-stats {
   justify-self: end;
   display: flex;
-  gap: 11px;
+  gap: 9px;
 }
 
 .game-stats div {
@@ -457,15 +458,15 @@ button:focus-visible {
 .game-stats small {
   display: block;
   color: #786d7c;
-  font-size: 8px;
+  font-size: 7px;
   letter-spacing: 1px;
 }
 
 .game-stats strong {
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
   color: #e0d6e0;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .game-stats .danger {
@@ -474,28 +475,28 @@ button:focus-visible {
 
 .game-heading {
   width: 100%;
-  margin: 10px auto 8px;
+  margin: 5px auto 4px;
   text-align: center;
   flex-shrink: 0;
 }
 
 .game-heading h1 {
-  margin: 3px 0 4px;
+  margin: 2px 0 3px;
   font-family: "Playfair Display", serif;
-  font-size: clamp(30px, 4.8vw, 41px);
+  font-size: clamp(24px, 4vw, 38px);
   font-weight: 500;
   line-height: 1;
 }
 
 .game-heading > p:last-child {
   color: #8d8292;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .progress-bar {
   width: min(850px, 100%);
   height: 3px;
-  margin: 0 auto 5px;
+  margin: 0 auto 4px;
   overflow: hidden;
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.05);
@@ -510,20 +511,23 @@ button:focus-visible {
 
 .game-board-area {
   width: min(900px, 100%);
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   margin: 0 auto;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .memory-board {
   width: min(720px, 100%);
-  height: min(100%, 620px);
+  height: 100%;
+  max-height: 100%;
   display: grid;
-  gap: clamp(5px, 0.9vw, 8px);
+  gap: clamp(4px, 0.7vw, 7px);
+  min-height: 0;
 }
 
 .memory-card {
@@ -533,7 +537,7 @@ button:focus-visible {
   height: 100%;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: clamp(8px, 1vw, 12px);
+  border-radius: clamp(7px, 0.9vw, 12px);
   background: transparent;
   cursor: pointer;
   perspective: 700px;
@@ -570,13 +574,13 @@ button:focus-visible {
   transform: rotateY(180deg);
   background: linear-gradient(145deg, #2b1a42, #241637);
   color: white;
-  font-size: clamp(17px, 3.1vw, 29px);
+  font-size: clamp(15px, 3vw, 28px);
 }
 
 .card-back {
   background: linear-gradient(145deg, #171022, #130d1b);
   color: rgba(211, 160, 194, 0.42);
-  font-size: clamp(10px, 2vw, 18px);
+  font-size: clamp(9px, 2vw, 17px);
 }
 
 .memory-card:hover:not(:disabled) {
@@ -612,20 +616,22 @@ button:focus-visible {
 
 .preview-label {
   position: absolute;
-  bottom: 4px;
+  bottom: 3px;
   color: #897d8c;
-  font-size: 10px;
+  font-size: 9px;
+  pointer-events: none;
 }
 
 .game-footer {
   width: min(850px, 100%);
-  margin: 6px auto 0;
+  margin: 4px auto 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: #6f6574;
-  font-size: 9px;
+  font-size: 8px;
   flex-shrink: 0;
+  min-height: 15px;
 }
 
 .game-footer span:last-child {
@@ -934,225 +940,6 @@ button:focus-visible {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
-@media (max-width: 650px) {
-  .map-header h1 {
-    font-size: 36px;
-  }
-
-  .map-subtitle {
-    font-size: 11px;
-  }
-
-  .continue-card span {
-    font-size: 8px;
-  }
-
-  .continue-card small {
-    font-size: 9px;
-  }
-
-  .road-label strong {
-    font-size: 9px;
-  }
-
-  .road-label small {
-    font-size: 8px;
-  }
-
-  .current-level span {
-    font-size: 8px;
-  }
-
-  .current-level strong {
-    font-size: 19px;
-  }
-
-  .game-stats small {
-    font-size: 7px;
-  }
-
-  .game-stats strong {
-    font-size: 11px;
-  }
-
-  .game-heading h1 {
-    font-size: 28px;
-  }
-
-  .game-heading > p:last-child {
-    font-size: 9px;
-  }
-
-  .preview-label {
-    font-size: 9px;
-  }
-
-  .game-footer {
-    font-size: 8px;
-  }
-
-  .result-message {
-    font-size: 12px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-@media (max-width: 650px) {
-  .music-control {
-    top: 8px;
-    right: 8px;
-    padding: 6px 8px;
-    font-size: 8px;
-  }
-
-  .map-screen {
-    padding: 19px 10px 10px;
-  }
-
-  .map-header h1 {
-    font-size: 33px;
-  }
-
-  .map-subtitle {
-    font-size: 9px;
-  }
-
-  .map-counter {
-    min-width: 60px;
-  }
-
-  .continue-card {
-    padding: 10px 11px;
-  }
-
-  .continue-card strong {
-    font-size: 16px;
-  }
-
-  .continue-card small {
-    font-size: 7px;
-  }
-
-  .continue-card button {
-    padding: 7px 10px;
-    font-size: 9px;
-  }
-
-  .road-level {
-    height: 80px;
-  }
-
-  .level-node {
-    width: 37px;
-    height: 37px;
-  }
-
-  .road-label {
-    width: 85px;
-  }
-
-  .road-label strong {
-    font-size: 8px;
-  }
-
-  .road-label small {
-    font-size: 6px;
-  }
-
-  .game-screen {
-    padding: 6px 8px 5px;
-  }
-
-  .current-level strong {
-    font-size: 17px;
-  }
-
-  .back-button {
-    padding: 5px 8px;
-    font-size: 9px;
-  }
-
-  .game-stats {
-    gap: 6px;
-  }
-
-  .game-stats div {
-    min-width: 24px;
-  }
-
-  .game-stats small {
-    font-size: 5px;
-  }
-
-  .game-stats strong {
-    font-size: 9px;
-  }
-
-  .game-heading {
-    margin: 5px auto;
-  }
-
-  .game-heading h1 {
-    font-size: 25px;
-  }
-
-  .game-heading > p:last-child {
-    font-size: 7px;
-  }
-
-  .memory-board {
-    gap: 3px;
-  }
-
-  .memory-card {
-    border-radius: 7px;
-  }
-
-  .game-footer {
-    font-size: 6px;
-  }
-
-  .result-card {
-    padding: 27px 18px;
-    border-radius: 20px;
-  }
-}
-
-@media (max-height: 700px) {
-  .game-screen {
-    padding: 4px 8px;
-  }
-
-  .game-heading {
-    margin: 3px auto;
-  }
-
-  .game-heading h1 {
-    font-size: 24px;
-  }
-
-  .game-stats {
-    gap: 5px;
-  }
-
-  .memory-board {
-    gap: 3px;
-  }
-
-  .game-footer {
-    margin-top: 2px;
-  }
-}
 /* =========================================================
    5000 LEVEL VERSION SYSTEM
    ========================================================= */
@@ -1266,7 +1053,6 @@ button:focus-visible {
   box-shadow:
     0 0 0 3px rgba(255, 255, 255, 0.3),
     0 0 32px rgba(255, 255, 255, 0.28);
-
   animation: hintPulse 0.55s ease-in-out infinite alternate;
 }
 
@@ -1278,7 +1064,6 @@ button:focus-visible {
   from {
     transform: scale(1);
   }
-
   to {
     transform: scale(1.06);
   }
@@ -1288,19 +1073,15 @@ button:focus-visible {
   0% {
     transform: translateX(0);
   }
-
   25% {
     transform: translateX(-5px);
   }
-
   50% {
     transform: translateX(5px);
   }
-
   75% {
     transform: translateX(-4px);
   }
-
   100% {
     transform: translateX(0);
   }
@@ -1409,20 +1190,176 @@ button:focus-visible {
 }
 
 /* =========================================================
-   RESPONSIVE
+   RESPONSIVE (MOBILE & SHORT SCREENS)
    ========================================================= */
 
 @media (max-width: 800px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .achievement-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 650px) {
+  .music-control {
+    top: 8px;
+    right: 8px;
+    padding: 6px 8px;
+    font-size: 8px;
+  }
+
+  .map-screen {
+    padding: 19px 10px 10px;
+  }
+
+  .map-header h1 {
+    font-size: 33px;
+  }
+
+  .map-subtitle {
+    font-size: 9px;
+  }
+
+  .map-counter {
+    min-width: 60px;
+  }
+
+  .continue-card {
+    padding: 10px 11px;
+  }
+
+  .continue-card strong {
+    font-size: 16px;
+  }
+
+  .continue-card small {
+    font-size: 7px;
+  }
+
+  .continue-card button {
+    padding: 7px 10px;
+    font-size: 9px;
+  }
+
+  .road-level {
+    height: 80px;
+  }
+
+  .level-node {
+    width: 37px;
+    height: 37px;
+  }
+
+  .road-label {
+    width: 85px;
+  }
+
+  .road-label strong {
+    font-size: 8px;
+  }
+
+  .road-label small {
+    font-size: 6px;
+  }
+
+  .game-screen {
+    padding: 5px 7px 3px;
+  }
+
+  .game-header {
+    min-height: 28px;
+  }
+
+  .back-button {
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+
+  .current-level span {
+    font-size: 6px;
+    letter-spacing: 1.5px;
+  }
+
+  .current-level strong {
+    font-size: 16px;
+  }
+
+  .game-stats {
+    gap: 5px;
+  }
+
+  .game-stats div {
+    min-width: 22px;
+  }
+
+  .game-stats small {
+    font-size: 5px;
+  }
+
+  .game-stats strong {
+    font-size: 9px;
+  }
+
+  .game-heading {
+    margin: 3px auto 3px;
+  }
+
+  .game-heading h1 {
+    font-size: 23px;
+  }
+
+  .game-heading > p:last-child {
+    font-size: 7px;
+  }
+
+  .progress-bar {
+    height: 2px;
+    margin-bottom: 3px;
+  }
+
+  .game-board-area {
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .memory-board {
+    width: min(96vw, 520px);
+    height: 100%;
+    max-height: 100%;
+    gap: 3px;
+  }
+
+  .memory-card {
+    border-radius: 6px;
+  }
+
+  .card-front {
+    font-size: clamp(14px, 6vw, 25px);
+  }
+
+  .card-back {
+    font-size: clamp(8px, 4vw, 15px);
+  }
+
+  .preview-label {
+    font-size: 7px;
+    bottom: 2px;
+  }
+
+  .game-footer {
+    margin-top: 2px;
+    min-height: 12px;
+    font-size: 6px;
+  }
+
+  .result-card {
+    padding: 27px 18px;
+    border-radius: 20px;
+  }
+
   .stats-grid,
   .achievement-grid {
     grid-template-columns: 1fr;
@@ -1438,5 +1375,158 @@ button:focus-visible {
 
   .level-jump input {
     flex: 1;
+  }
+}
+
+@media (max-height: 700px) {
+  .game-screen {
+    padding: 3px 6px 2px;
+  }
+
+  .game-heading {
+    margin: 2px auto;
+  }
+
+  .game-heading h1 {
+    font-size: 21px;
+  }
+
+  .game-heading > p:last-child {
+    font-size: 6px;
+  }
+
+  .memory-board {
+    gap: 2px;
+  }
+
+  .game-footer {
+    font-size: 5px;
+    min-height: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+/* =========================================================
+   RESTART BUTTON (matches UI)
+   ========================================================= */
+.restart-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbb3c4;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.restart-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 162, 199, 0.3);
+  color: #e2c8d8;
+  transform: rotate(-30deg) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.restart-button:active {
+  transform: rotate(-30deg) scale(0.95);
+}
+
+.restart-button:focus-visible {
+  outline: 2px solid #d4a2c7;
+  outline-offset: 2px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 650px) {
+  .restart-button {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    margin-left: 2px;
+  }
+}
+/* Header layout */
+.game-header {
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+}
+
+/* Restart button – clean circular icon */
+.restart-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbb3c4;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.restart-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 162, 199, 0.3);
+  color: #e2c8d8;
+  transform: rotate(-30deg) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.restart-button:active {
+  transform: rotate(-30deg) scale(0.95);
+}
+
+.restart-button:focus-visible {
+  outline: 2px solid #d4a2c7;
+  outline-offset: 2px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 650px) {
+  .header-left {
+    gap: 4px;
+  }
+  .restart-button {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
   }
 }

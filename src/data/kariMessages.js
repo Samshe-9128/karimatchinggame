@@ -1,4 +1,4 @@
-export const KARI_MESSAGES = [
+const   KARI_MESSAGES = [
   "Okay Kari... not bad 😂",
   "See? I knew you had it in you 😌",
   "Don't get too proud, it was only one level 👀",
@@ -100,3 +100,4 @@ export const KARI_MESSAGES = [
   "And somehow, after all that... I'd still choose you to annoy.",
   "Haha... you finally finished it 😭💗 I'm really glad you played it all the way through. I made this whole ridiculous thing just for you, and honestly? I'd do it again.",
 ];
+export default KARI_MESSAGES;

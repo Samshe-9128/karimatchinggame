@@ -1,126 +1,87 @@
-import "./App.css";
-
-import MusicControl from "./components/MusicControl";
-import MapScreen from "./components/MapScreen";
-import GameScreen from "./components/GameScreen";
-import CompleteScreen from "./components/CompleteScreen";
-import LostScreen from "./components/LostScreen";
-import StatsScreen from "./components/StatsScreen";
-
-import useMusic from "./hooks/useMusic";
-import useMemoryGame from "./hooks/useMemoryGame";
+import { useEffect } from "react";
+import { useMemoryGame } from "./hooks/useMemoryGame.js";
+import {
+  resumeIfNeeded,
+  setMusicVolume,
+  setSfxVolume,
+  unlockAudio,
+  startAmbient,
+} from "./lib/game/audio.js";
+import { BreatheOverlay } from "./components/game/BreatheOverlay.jsx";
+import { CollectionScreen } from "./components/game/CollectionScreen.jsx";
+import { CompanionPanel } from "./components/game/CompanionPanel.jsx";
+import { CompleteScreen } from "./components/game/CompleteScreen.jsx";
+import { GameScreen } from "./components/game/GameScreen.jsx";
+import { HowToScreen } from "./components/game/HowToScreen.jsx";
+import { MapScreen } from "./components/game/MapScreen.jsx";
+import { RestScreen } from "./components/game/RestScreen.jsx";
+import { SettingsPanel } from "./components/game/SettingsPanel.jsx";
+import { StatsScreen } from "./components/game/StatsScreen.jsx";
 
 export default function App() {
-  const music = useMusic();
   const game = useMemoryGame();
 
-  // Start music from a real user interaction.
-  function startMusic() {
-    music.startMusic?.();
-  }
+  useEffect(() => {
+    if (!game.hydrated) return;
+    setMusicVolume(game.save.settings.music);
+    setSfxVolume(game.save.settings.sfx);
+    // Best-effort autoplay. Browsers may require a gesture; the listeners below unlock it.
+    unlockAudio();
+    startAmbient();
+    const unlock = () => {
+      unlockAudio();
+      if (game.save.settings.music > 0) startAmbient();
+    };
+    window.addEventListener("pointerdown", unlock, {
+      once: true,
+      passive: true,
+    });
+    window.addEventListener("keydown", unlock, { once: true });
+    window.addEventListener("touchstart", unlock, {
+      once: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, [game.hydrated]);
+
+  useEffect(() => {
+    if (!game.hydrated) return;
+    setMusicVolume(game.save.settings.music);
+    setSfxVolume(game.save.settings.sfx);
+    if (game.save.settings.music <= 0) return;
+    startAmbient();
+  }, [game.hydrated, game.save.settings.music, game.save.settings.sfx]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") resumeIfNeeded();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  if (!game.hydrated)
+    return <div className="garden-shell" aria-hidden="true" />;
 
   return (
-    <div className="app">
-      <MusicControl
-        musicOn={music.musicOn}
-        toggleMusic={music.toggleMusic}
-        hasMusic={music.hasMusic}
-      />
-
-      {game.screen === "map" && (
-        <MapScreen
-          highestUnlocked={game.highestUnlocked}
-          completedLevels={game.completedLevels}
-          onStartLevel={(level) => {
-            startMusic();
-            game.startLevel(level);
-          }}
-          onStats={() => {
-            startMusic();
-            game.openStats();
-          }}
-        />
-      )}
-
-      {game.screen === "game" && (
-        <GameScreen
-          level={game.level}
-          cards={game.cards}
-          flipped={game.flipped}
-          matched={game.matched}
-          trapped={game.trapped}
-          moves={game.moves}
-          score={game.score}
-          combo={game.combo}
-          lives={game.lives}
-          hints={game.hints}
-          previewing={game.previewing}
-          checking={game.checking}
-          timeLeft={game.timeLeft}
-          hinting={game.hinting}
-          blackout={game.blackout}
-          config={game.config}
-          onHint={() => {
-            startMusic();
-            game.useHint();
-          }}
-          onCardClick={(cardId) => {
-            startMusic();
-            game.handleCardClick(cardId);
-          }}
-          onRestart={game.restartLevel}
-          onBack={() => {
-            startMusic();
-            game.backToMap();
-          }}
-        />
-      )}
-
-      {game.screen === "complete" && (
-        <CompleteScreen
-          level={game.level}
-          moves={game.moves}
-          score={game.score}
-          hiddenMessage={game.hiddenMessage}
-          traveling={game.traveling}
-          combo={game.combo}
-          lives={game.lives}
-          onNext={() => {
-            startMusic();
-            game.goToNextLevel();
-          }}
-          onBack={() => {
-            startMusic();
-            game.backToMap();
-          }}
-        />
-      )}
-
-      {game.screen === "lost" && (
-        <LostScreen
-          level={game.level}
-          onRetry={() => {
-            startMusic();
-            game.startLevel(game.level);
-          }}
-          onBack={() => {
-            startMusic();
-            game.backToMap();
-          }}
-        />
-      )}
-
-      {game.screen === "stats" && (
-        <StatsScreen
-          highestUnlocked={game.highestUnlocked}
-          completedLevels={game.completedLevels}
-          stats={game.stats}
-          onBack={() => {
-            startMusic();
-            game.backToMap();
-          }}
-        />
-      )}
+    <div
+      className="garden-shell text-fg"
+      data-reduced={game.save.settings.reducedMotion ? "true" : "false"}
+    >
+      {game.screen === "map" && <MapScreen game={game} />}
+      {game.screen === "game" && <GameScreen game={game} />}
+      {game.screen === "complete" && <CompleteScreen game={game} />}
+      {game.screen === "rest" && <RestScreen game={game} />}
+      {game.screen === "stats" && <StatsScreen game={game} />}
+      {game.screen === "collection" && <CollectionScreen game={game} />}
+      {game.screen === "howto" && <HowToScreen game={game} />}
+      <SettingsPanel game={game} />
+      <CompanionPanel game={game} />
+      <BreatheOverlay game={game} />
     </div>
   );
 }

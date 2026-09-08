@@ -1,19 +1,24 @@
-# React + Vite
+# Kari Memory Road v5
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A clean React + JSX + Vite release built from the original visual UI.
 
-Currently, two official plugins are available:
+## Key behavior
+- No welcome screen: opens directly on the path.
+- Original warm garden UI is preserved.
+- 5,000 levels across 11 chapters.
+- Existing local progress is migrated from older `bloom-path` and `kari-memory-*` keys.
+- The release continues writing legacy keys so an update on the same domain does not wipe old users.
+- Settings modal works without Radix.
+- Companion is local-only; no Grok/API dependency.
+- Audio uses Web Audio with best-effort page-load start plus first-interaction unlock for browser autoplay restrictions.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Build
+```bash
+npm run build
+```

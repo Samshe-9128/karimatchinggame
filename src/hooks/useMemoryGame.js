@@ -1,74 +1,39 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { readJSON, readStorage, writeStorage } from "../utils/storage";
-import { MAX_LEVEL, getLevelConfig } from "../utils/gameConfig";
-import { createDeck, shuffleDeck } from "../utils/deck";
-import { getLevelMessage } from "../data/levelMessages";
-
-export default function useMemoryGame() {
-  // ----------------------------------------------------
-  // PROGRESS
-  // ----------------------------------------------------
-  const [highestUnlocked, setHighestUnlocked] = useState(() => {
-    const saved = Number(readStorage("kari-memory-highest-level", "1"));
-    return Math.min(MAX_LEVEL, Math.max(1, Math.floor(saved)));
-  });
-
-  const [completedLevels, setCompletedLevels] = useState(() => {
-    const saved = readJSON("kari-memory-completed-levels", []);
-    return new Set(
-      Array.isArray(saved)
-        ? saved.filter(
-            (value) =>
-              Number.isInteger(value) && value >= 1 && value <= MAX_LEVEL,
-          )
-        : [],
-    );
-  });
-
-  // ----------------------------------------------------
-  // STATS
-  // ----------------------------------------------------
-  const [stats, setStats] = useState(() => {
-    const saved = readJSON("kari-memory-stats", {});
-    return {
-      totalMatches: Number(saved.totalMatches) || 0,
-      bestCombo: Number(saved.bestCombo) || 0,
-      hintsUsed: Number(saved.hintsUsed) || 0,
-      failedLevels: Number(saved.failedLevels) || 0,
-      perfectLevels: Number(saved.perfectLevels) || 0,
-      totalScore: Number(saved.totalScore) || 0,
-    };
-  });
-
-  // ----------------------------------------------------
-  // SCREEN
-  // ----------------------------------------------------
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  GARDENS,
+  getDailyConfig,
+  getLevelConfig,
+  MAX_LEVEL,
+  seedFromKey,
+  todayKey,
+} from "../lib/game/config.js";
+import { createDailyDeck, createDeck, shuffleDeck } from "../lib/game/deck.js";
+import { getDailyNote, getLevelNote } from "../lib/game/messages.js";
+import { defaultSave, loadSave, writeSave } from "../lib/game/storage.js";
+import {
+  playFlip,
+  playHint,
+  playMatch,
+  playMiss,
+  playRest,
+  playWin,
+} from "../lib/game/audio.js";
+export function useMemoryGame() {
+  const [hydrated, setHydrated] = useState(false);
+  const [save, setSave] = useState(defaultSave);
   const [screen, setScreen] = useState("map");
-  const [level, setLevel] = useState(() => {
-    const saved = Number(readStorage("kari-memory-highest-level", "1"));
-    return Math.min(MAX_LEVEL, Math.max(1, Math.floor(saved)));
-  });
-
-  // ----------------------------------------------------
-  // BOARD
-  // ----------------------------------------------------
+  const [overlay, setOverlay] = useState("none");
+  const [level, setLevel] = useState(1);
+  const [isDaily, setIsDaily] = useState(false);
   const [cards, setCards] = useState([]);
   const [flipped, setFlipped] = useState([]);
   const [matched, setMatched] = useState(new Set());
   const [trapped, setTrapped] = useState([]);
-
-  // ----------------------------------------------------
-  // GAME STATS
-  // ----------------------------------------------------
   const [moves, setMoves] = useState(0);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [lives, setLives] = useState(null);
   const [hints, setHints] = useState(null);
-
-  // ----------------------------------------------------
-  // STATUS
-  // ----------------------------------------------------
   const [previewing, setPreviewing] = useState(false);
   const [checking, setChecking] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
@@ -76,10 +41,6 @@ export default function useMemoryGame() {
   const [blackout, setBlackout] = useState(false);
   const [hiddenMessage, setHiddenMessage] = useState("");
   const [traveling, setTraveling] = useState(false);
-
-  // ----------------------------------------------------
-  // REFS
-  // ----------------------------------------------------
   const flippedRef = useRef([]);
   const matchedRef = useRef(new Set());
   const checkingRef = useRef(false);
@@ -88,13 +49,17 @@ export default function useMemoryGame() {
   const livesRef = useRef(null);
   const comboRef = useRef(0);
   const hintsRef = useRef(null);
-  const unlockedRef = useRef(highestUnlocked);
+  const unlockedRef = useRef(1);
   const sessionRef = useRef(0);
   const travelLockRef = useRef(false);
-
-  // ----------------------------------------------------
-  // TIMERS
-  // ----------------------------------------------------
+  const movesRef = useRef(0);
+  const scoreRef = useRef(0);
+  const cardsRef = useRef([]);
+  const calmRef = useRef(false);
+  const saveRef = useRef(save);
+  const isDailyRef = useRef(false);
+  const levelRef = useRef(1);
+  const overlayRef = useRef("none");
   const previewTimerRef = useRef(null);
   const mismatchTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -102,69 +67,101 @@ export default function useMemoryGame() {
   const travelTimerRef = useRef(null);
   const hintTimerRef = useRef(null);
   const blackoutTimerRef = useRef(null);
-
-  // ----------------------------------------------------
-  // CONFIG
-  // ----------------------------------------------------
-  const config = useMemo(() => getLevelConfig(level), [level]);
-
-  // ----------------------------------------------------
-  // SAVE PROGRESS
-  // ----------------------------------------------------
+  const config = useMemo(() => {
+    if (isDaily) return getDailyConfig(seedFromKey(todayKey()));
+    return getLevelConfig(level);
+  }, [level, isDaily]);
+  const persist = useCallback((next) => {
+    saveRef.current = next;
+    setSave(next);
+    writeSave(next);
+  }, []);
   useEffect(() => {
-    unlockedRef.current = highestUnlocked;
-    writeStorage("kari-memory-highest-level", String(highestUnlocked));
-  }, [highestUnlocked]);
+    const loaded = loadSave();
+    saveRef.current = loaded;
+    unlockedRef.current = loaded.highestUnlocked;
+    calmRef.current = loaded.settings.calm;
+    setSave(loaded);
+    setLevel(loaded.highestUnlocked);
+    setHydrated(true);
+  }, []);
+  useEffect(() => {
+    saveRef.current = save;
+    unlockedRef.current = save.highestUnlocked;
+    calmRef.current = save.settings.calm;
+  }, [save]);
 
   useEffect(() => {
-    writeStorage(
-      "kari-memory-completed-levels",
-      JSON.stringify(Array.from(completedLevels).sort((a, b) => a - b)),
-    );
-  }, [completedLevels]);
-
-  useEffect(() => {
-    writeStorage("kari-memory-stats", JSON.stringify(stats));
-  }, [stats]);
-
-  // ----------------------------------------------------
-  // CLEANUP
-  // ----------------------------------------------------
+    overlayRef.current = overlay;
+  }, [overlay]);
   function clearTimers() {
-    clearTimeout(previewTimerRef.current);
-    clearTimeout(mismatchTimerRef.current);
-    clearTimeout(completeTimerRef.current);
-    clearTimeout(travelTimerRef.current);
-    clearTimeout(hintTimerRef.current);
-    clearTimeout(blackoutTimerRef.current);
-    clearInterval(countdownTimerRef.current);
+    if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
+    if (mismatchTimerRef.current) window.clearTimeout(mismatchTimerRef.current);
+    if (completeTimerRef.current) window.clearTimeout(completeTimerRef.current);
+    if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
+    if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
+    if (blackoutTimerRef.current) window.clearTimeout(blackoutTimerRef.current);
+    if (countdownTimerRef.current)
+      window.clearInterval(countdownTimerRef.current);
   }
-
-  // ----------------------------------------------------
-  // SHUFFLE BOARD
-  // ----------------------------------------------------
+  useEffect(() => {
+    return () => {
+      clearTimers();
+      activeRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    function onHide() {
+      if (document.visibilityState === "hidden") {
+        writeSave(saveRef.current);
+      }
+    }
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, []);
+  const patchSettings = useCallback(
+    (partial) => {
+      const next = {
+        ...saveRef.current,
+        settings: { ...saveRef.current.settings, ...partial },
+      };
+      persist(next);
+    },
+    [persist],
+  );
+  const setName = useCallback(
+    (name) => {
+      persist({ ...saveRef.current, name: name.trim().slice(0, 24) });
+    },
+    [persist],
+  );
+  function replaceSave(next) {
+    persist(next);
+    unlockedRef.current = next.highestUnlocked;
+    setLevel(next.highestUnlocked);
+  }
   function shuffleCurrentBoard() {
-    setCards((current) => shuffleDeck(current));
+    setCards((current) => {
+      const next = shuffleDeck(current);
+      cardsRef.current = next;
+      return next;
+    });
   }
-
-  // ----------------------------------------------------
-  // BLACKOUT
-  // ----------------------------------------------------
   function triggerBlackout() {
-    if (!config.blackoutEvery || !activeRef.current) {
+    if (!config.blackoutEvery || !activeRef.current) return;
+    if (blackoutTimerRef.current) window.clearTimeout(blackoutTimerRef.current);
+    setBlackout(true);
+    blackoutTimerRef.current = window.setTimeout(() => setBlackout(false), 700);
+  }
+  function loseGame() {
+    if (calmRef.current) {
+      startCountdown(Math.max(20, config.time ?? 40), sessionRef.current);
       return;
     }
-    clearTimeout(blackoutTimerRef.current);
-    setBlackout(true);
-    blackoutTimerRef.current = setTimeout(() => {
-      setBlackout(false);
-    }, 650);
-  }
-
-  // ----------------------------------------------------
-  // LOSE GAME
-  // ----------------------------------------------------
-  function loseGame() {
     clearTimers();
     activeRef.current = false;
     checkingRef.current = false;
@@ -174,17 +171,18 @@ export default function useMemoryGame() {
     setPreviewing(false);
     setHinting([]);
     setBlackout(false);
-    setStats((previous) => ({
-      ...previous,
-      failedLevels: previous.failedLevels + 1,
-    }));
-    setScreen("lost");
+    playRest();
+    persist({
+      ...saveRef.current,
+      stats: {
+        ...saveRef.current.stats,
+        restCount: saveRef.current.stats.restCount + 1,
+      },
+    });
+    setScreen("rest");
   }
-
-  // ----------------------------------------------------
-  // LOSE LIFE
-  // ----------------------------------------------------
   function loseLife() {
+    if (calmRef.current) return true;
     if (livesRef.current === null) {
       loseGame();
       return false;
@@ -200,91 +198,70 @@ export default function useMemoryGame() {
     }
     return true;
   }
-
-  // ----------------------------------------------------
-  // COUNTDOWN
-  // ----------------------------------------------------
   function startCountdown(seconds, session) {
-    clearInterval(countdownTimerRef.current);
+    if (countdownTimerRef.current)
+      window.clearInterval(countdownTimerRef.current);
     timeLeftRef.current = seconds;
     setTimeLeft(seconds);
-    countdownTimerRef.current = setInterval(() => {
+    countdownTimerRef.current = window.setInterval(() => {
       if (sessionRef.current !== session) {
-        clearInterval(countdownTimerRef.current);
+        if (countdownTimerRef.current)
+          window.clearInterval(countdownTimerRef.current);
         return;
       }
       const next = Math.max(0, (timeLeftRef.current ?? seconds) - 1);
       timeLeftRef.current = next;
       setTimeLeft(next);
       if (next <= 0) {
-        clearInterval(countdownTimerRef.current);
+        if (countdownTimerRef.current)
+          window.clearInterval(countdownTimerRef.current);
+        if (calmRef.current) return;
         if (config.v2 && livesRef.current !== null) {
           const survived = loseLife();
           if (!survived) return;
-          startFreshRound(sessionRef.current);
+          timeLeftRef.current = config.time;
+          setTimeLeft(config.time);
+          startCountdown(config.time ?? 40, session);
           return;
         }
         loseGame();
       }
     }, 1000);
   }
-
-  // ----------------------------------------------------
-  // START FRESH ROUND (used in time-based levels)
-  // ----------------------------------------------------
-  function startFreshRound(existingSession) {
-    const newDeck = createDeck(level);
-    flippedRef.current = newDeck.map((card) => card.id);
-    matchedRef.current = new Set();
-    setCards(newDeck);
-    setMatched(new Set());
-    setFlipped(flippedRef.current);
-    setChecking(false);
-    checkingRef.current = false;
-    setPreviewing(true);
-    timeLeftRef.current = config.time;
-    setTimeLeft(config.time);
-    previewTimerRef.current = setTimeout(() => {
-      if (sessionRef.current !== existingSession) return;
-      flippedRef.current = [];
-      setFlipped([]);
-      setPreviewing(false);
-      if (config.time !== null) {
-        startCountdown(config.time, existingSession);
-      }
-    }, config.previewTime);
-  }
-
-  // ----------------------------------------------------
-  // START LEVEL
-  // ----------------------------------------------------
-  function startLevel(levelNumber, bypassLock = false) {
-    if (levelNumber < 1 || levelNumber > MAX_LEVEL) return;
-    if (!bypassLock && levelNumber > unlockedRef.current) return;
-
+  function beginRound(levelNumber, deck, daily, bypassLock) {
+    if (!daily) {
+      if (levelNumber < 1 || levelNumber > MAX_LEVEL) return;
+      if (!bypassLock && levelNumber > unlockedRef.current) return;
+    }
     clearTimers();
     sessionRef.current += 1;
     const session = sessionRef.current;
-    const levelConfig = getLevelConfig(levelNumber);
-    const deck = createDeck(levelNumber);
-
+    const levelConfig = daily
+      ? getDailyConfig(seedFromKey(todayKey()))
+      : getLevelConfig(levelNumber);
     activeRef.current = true;
     checkingRef.current = false;
-    flippedRef.current = deck.map((card) => card.id);
+    flippedRef.current = deck.map((c) => c.id);
     matchedRef.current = new Set();
-    livesRef.current = levelConfig.lives;
+    livesRef.current = calmRef.current ? null : levelConfig.lives;
     comboRef.current = 0;
     hintsRef.current = levelConfig.hints;
-
+    movesRef.current = 0;
+    scoreRef.current = 0;
+    cardsRef.current = deck;
+    isDailyRef.current = daily;
+    levelRef.current = levelNumber;
+    setIsDaily(daily);
     setLevel(levelNumber);
     setCards(deck);
+    cardsRef.current = deck;
     setFlipped(flippedRef.current);
     setMatched(new Set());
     setTrapped([]);
     setMoves(0);
     setScore(0);
     setCombo(0);
-    setLives(levelConfig.lives);
+    setLives(calmRef.current ? null : levelConfig.lives);
     setHints(levelConfig.hints);
     setHinting([]);
     setBlackout(false);
@@ -293,9 +270,9 @@ export default function useMemoryGame() {
     setHiddenMessage("");
     setTimeLeft(levelConfig.time);
     timeLeftRef.current = levelConfig.time;
+    setOverlay("none");
     setScreen("game");
-
-    previewTimerRef.current = setTimeout(() => {
+    previewTimerRef.current = window.setTimeout(() => {
       if (sessionRef.current !== session) return;
       flippedRef.current = [];
       setFlipped([]);
@@ -305,83 +282,65 @@ export default function useMemoryGame() {
       }
     }, levelConfig.previewTime);
   }
-
-  // ----------------------------------------------------
-  // HINT
-  // ----------------------------------------------------
+  function startLevel(levelNumber, bypassLock = false) {
+    beginRound(levelNumber, createDeck(levelNumber), false, bypassLock);
+  }
+  function startDaily() {
+    const key = todayKey();
+    beginRound(0, createDailyDeck(key), true, true);
+  }
   function useHint() {
-    if (!config.v2) return;
     if (hintsRef.current === null || hintsRef.current <= 0) return;
     if (previewing || checking || blackout || !activeRef.current) return;
-
-    const available = cards.filter(
+    const available = cardsRef.current.filter(
       (card) => !matchedRef.current.has(card.id) && !card.trap,
     );
     const groups = new Map();
     available.forEach((card) => {
-      if (!groups.has(card.pairId)) {
-        groups.set(card.pairId, []);
-      }
-      groups.get(card.pairId).push(card);
+      if (card.pairId === null) return;
+      const list = groups.get(card.pairId) ?? [];
+      list.push(card);
+      groups.set(card.pairId, list);
     });
-    const pairs = Array.from(groups.values()).filter(
-      (pair) => pair.length === 2,
-    );
+    const pairs = Array.from(groups.values()).filter((p) => p.length === 2);
     if (!pairs.length) return;
-
     const pair = pairs[Math.floor(Math.random() * pairs.length)];
-    const ids = pair.map((card) => card.id);
+    const ids = pair.map((c) => c.id);
     const nextHints = hintsRef.current - 1;
     hintsRef.current = nextHints;
     setHints(nextHints);
-    setScore((previous) => Math.max(0, previous - 50));
+    scoreRef.current = Math.max(0, scoreRef.current - 40);
+    setScore(scoreRef.current);
     setHinting(ids);
-    setStats((previous) => ({
-      ...previous,
-      hintsUsed: previous.hintsUsed + 1,
-    }));
-
+    playHint();
+    persist({
+      ...saveRef.current,
+      stats: {
+        ...saveRef.current.stats,
+        hintsUsed: saveRef.current.stats.hintsUsed + 1,
+      },
+    });
     const session = sessionRef.current;
-    clearTimeout(hintTimerRef.current);
-    hintTimerRef.current = setTimeout(() => {
-      if (sessionRef.current === session) {
-        setHinting([]);
-      }
+    if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = window.setTimeout(() => {
+      if (sessionRef.current === session) setHinting([]);
     }, 1200);
   }
-
-  // ----------------------------------------------------
-  // MATCH SCORE
-  // ----------------------------------------------------
   function calculateMatchScore(firstCard, nextCombo) {
     let points = 100 + nextCombo * 25;
-    if (level >= 101) {
-      points += Math.floor(level / 25);
-    }
-    if (firstCard.special === "golden") {
-      points += 150;
-    }
-    if (firstCard.special === "freeze") {
-      points += 50;
-    }
-    if (firstCard.special === "bomb") {
-      points -= 75;
-    }
+    if (levelRef.current >= 41) points += Math.floor(levelRef.current / 20);
+    if (firstCard.special === "bloom") points += 150;
+    if (firstCard.special === "dew") points += 50;
+    if (firstCard.special === "storm") points -= 60;
     return Math.max(25, points);
   }
-
-  // ----------------------------------------------------
-  // APPLY SPECIAL CARD
-  // ----------------------------------------------------
   function applySpecialCard(card) {
-    if (card.special === "freeze") {
-      if (timeLeftRef.current !== null) {
-        const nextTime = timeLeftRef.current + config.freezeBonus;
-        timeLeftRef.current = nextTime;
-        setTimeLeft(nextTime);
-      }
+    if (card.special === "dew" && timeLeftRef.current !== null) {
+      const nextTime = timeLeftRef.current + config.dewBonus;
+      timeLeftRef.current = nextTime;
+      setTimeLeft(nextTime);
     }
-    if (card.special === "bomb") {
+    if (card.special === "storm") {
       if (timeLeftRef.current !== null) {
         const nextTime = Math.max(0, timeLeftRef.current - 3);
         timeLeftRef.current = nextTime;
@@ -391,95 +350,89 @@ export default function useMemoryGame() {
       setCombo(0);
     }
   }
-
-  // ----------------------------------------------------
-  // CARD CLICK
-  // ----------------------------------------------------
   function handleCardClick(cardId) {
     if (!activeRef.current || previewing || checking || blackout) return;
     if (hinting.includes(cardId)) return;
     if (flippedRef.current.includes(cardId)) return;
     if (matchedRef.current.has(cardId)) return;
     if (flippedRef.current.length >= 2) return;
-
-    const clickedCard = cards.find((card) => card.id === cardId);
+    const clickedCard = cardsRef.current.find((c) => c.id === cardId);
     if (!clickedCard) return;
-
-    // TRAP
+    playFlip();
     if (clickedCard.trap) {
       flippedRef.current = [...flippedRef.current, cardId];
       setFlipped(flippedRef.current);
       checkingRef.current = true;
       setChecking(true);
-      setMoves((value) => value + 1);
+      movesRef.current += 1;
+      setMoves(movesRef.current);
       const session = sessionRef.current;
-      setTrapped((previous) => [...previous, cardId]);
-      setScore((value) => Math.max(0, value - 100));
+      setTrapped((prev) => [...prev, cardId]);
+      scoreRef.current = Math.max(0, scoreRef.current - 80);
+      setScore(scoreRef.current);
+      playMiss();
       loseLife();
-      setTimeout(() => {
+      mismatchTimerRef.current = window.setTimeout(() => {
         if (sessionRef.current !== session) return;
         flippedRef.current = [];
         setFlipped([]);
         checkingRef.current = false;
         setChecking(false);
-        if (config.shuffleEvery) {
-          shuffleCurrentBoard();
-        }
+        if (config.shuffleEvery) shuffleCurrentBoard();
       }, 700);
       return;
     }
-
     const nextFlipped = [...flippedRef.current, cardId];
     flippedRef.current = nextFlipped;
     setFlipped(nextFlipped);
     if (nextFlipped.length === 1) return;
-
-    const firstId = nextFlipped[0];
-    const secondId = nextFlipped[1];
-    const firstCard = cards.find((card) => card.id === firstId);
-    const secondCard = cards.find((card) => card.id === secondId);
+    const firstCard = cardsRef.current.find((c) => c.id === nextFlipped[0]);
+    const secondCard = cardsRef.current.find((c) => c.id === nextFlipped[1]);
     if (!firstCard || !secondCard) {
       flippedRef.current = [];
       setFlipped([]);
       return;
     }
-
     checkingRef.current = true;
     setChecking(true);
-    const nextMove = moves + 1;
+    movesRef.current += 1;
+    const nextMove = movesRef.current;
     setMoves(nextMove);
     const session = sessionRef.current;
     const isMatch = firstCard.pairId === secondCard.pairId;
-
-    // MATCH
     if (isMatch) {
       const updated = new Set(matchedRef.current);
-      updated.add(firstId);
-      updated.add(secondId);
+      updated.add(firstCard.id);
+      updated.add(secondCard.id);
       matchedRef.current = updated;
       setMatched(new Set(updated));
-
       const nextCombo = config.v2 ? comboRef.current + 1 : 0;
       comboRef.current = nextCombo;
       setCombo(nextCombo);
       const points = calculateMatchScore(firstCard, nextCombo);
-      setScore((value) => value + points);
-      setStats((previous) => ({
-        ...previous,
-        totalMatches: previous.totalMatches + 1,
-        bestCombo: Math.max(previous.bestCombo, nextCombo),
-      }));
+      scoreRef.current += points;
+      setScore(scoreRef.current);
+      playMatch();
+      if (navigator.vibrate) navigator.vibrate(12);
+      const collection = new Set(saveRef.current.collection);
+      collection.add(firstCard.motifId);
+      persist({
+        ...saveRef.current,
+        collection: Array.from(collection),
+        stats: {
+          ...saveRef.current.stats,
+          totalMatches: saveRef.current.stats.totalMatches + 1,
+          bestCombo: Math.max(saveRef.current.stats.bestCombo, nextCombo),
+        },
+      });
       applySpecialCard(firstCard);
-
       if (config.blackoutEvery && nextMove % config.blackoutEvery === 0) {
-        setTimeout(triggerBlackout, 280);
+        window.setTimeout(triggerBlackout, 280);
       }
-
-      mismatchTimerRef.current = setTimeout(() => {
+      mismatchTimerRef.current = window.setTimeout(() => {
         if (sessionRef.current !== session) return;
         const matchedPairs = updated.size / 2;
-        const finished = matchedPairs >= config.pairs;
-        if (finished) {
+        if (matchedPairs >= config.pairs) {
           completeLevel(session);
           return;
         }
@@ -493,22 +446,21 @@ export default function useMemoryGame() {
       }, 280);
       return;
     }
-
-    // WRONG MATCH
-    mismatchTimerRef.current = setTimeout(() => {
+    playMiss();
+    mismatchTimerRef.current = window.setTimeout(() => {
       if (sessionRef.current !== session) return;
       if (config.v2) {
         const survived = loseLife();
         if (!survived) return;
       }
-      if (config.wrongTimePenalty > 0) {
+      if (config.wrongTimePenalty > 0 && timeLeftRef.current !== null) {
         const nextTime = Math.max(
           0,
-          (timeLeftRef.current ?? 0) - config.wrongTimePenalty,
+          timeLeftRef.current - config.wrongTimePenalty,
         );
         timeLeftRef.current = nextTime;
         setTimeLeft(nextTime);
-        if (nextTime <= 0) {
+        if (nextTime <= 0 && !calmRef.current) {
           loseGame();
           return;
         }
@@ -517,68 +469,81 @@ export default function useMemoryGame() {
       setFlipped([]);
       checkingRef.current = false;
       setChecking(false);
+      comboRef.current = 0;
+      setCombo(0);
       if (config.shuffleEvery && nextMove % config.shuffleEvery === 0) {
         shuffleCurrentBoard();
       }
       if (config.blackoutEvery && nextMove % config.blackoutEvery === 0) {
         triggerBlackout();
       }
-    }, 650);
+    }, 620);
   }
-
-  // ----------------------------------------------------
-  // COMPLETE
-  // ----------------------------------------------------
   function completeLevel(session) {
     if (sessionRef.current !== session || !activeRef.current) return;
-
     activeRef.current = false;
     checkingRef.current = false;
-    clearInterval(countdownTimerRef.current);
-    clearTimeout(mismatchTimerRef.current);
+    if (countdownTimerRef.current)
+      window.clearInterval(countdownTimerRef.current);
+    if (mismatchTimerRef.current) window.clearTimeout(mismatchTimerRef.current);
     setChecking(false);
     setBlackout(false);
-
-    const perfect = moves <= config.pairs;
-    setCompletedLevels((previous) => {
-      const next = new Set(previous);
-      next.add(level);
-      return next;
-    });
-
-    setStats((previous) => ({
-      ...previous,
-      totalScore: previous.totalScore + score,
-      perfectLevels: previous.perfectLevels + (perfect ? 1 : 0),
-    }));
-
-    if (level < MAX_LEVEL) {
-      setHighestUnlocked((previous) => {
-        const next = Math.max(previous, level + 1);
-        unlockedRef.current = next;
-        return next;
-      });
+    playWin();
+    const current = saveRef.current;
+    const perfect = movesRef.current <= config.pairs;
+    const nextCompleted = new Set(current.completed);
+    if (!isDailyRef.current) nextCompleted.add(levelRef.current);
+    let highest = current.highestUnlocked;
+    if (!isDailyRef.current && levelRef.current < MAX_LEVEL) {
+      highest = Math.max(highest, levelRef.current + 1);
     }
-
-    setHiddenMessage(getLevelMessage(level));
-    completeTimerRef.current = setTimeout(() => {
-      if (sessionRef.current === session) {
-        setScreen("complete");
-      }
-    }, 450);
+    unlockedRef.current = highest;
+    const key = todayKey();
+    let dailyStreak = current.dailyStreak;
+    let lastDaily = current.lastDaily;
+    let dailies = current.stats.dailies;
+    if (isDailyRef.current && current.lastDaily !== key) {
+      dailies += 1;
+      lastDaily = key;
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      dailyStreak =
+        current.lastDaily === todayKey(yesterday) ? dailyStreak + 1 : 1;
+    }
+    persist({
+      ...current,
+      highestUnlocked: highest,
+      completed: Array.from(nextCompleted).sort((a, b) => a - b),
+      lastDaily,
+      dailyStreak,
+      lastPlayDate: key,
+      stats: {
+        ...current.stats,
+        totalScore: current.stats.totalScore + scoreRef.current,
+        perfectLevels: current.stats.perfectLevels + (perfect ? 1 : 0),
+        dailies,
+        longestStreak: Math.max(current.stats.longestStreak, dailyStreak),
+      },
+    });
+    setHiddenMessage(
+      isDailyRef.current ? getDailyNote() : getLevelNote(levelRef.current),
+    );
+    completeTimerRef.current = window.setTimeout(() => {
+      if (sessionRef.current === session) setScreen("complete");
+    }, 420);
   }
-
-  // ----------------------------------------------------
-  // NEXT LEVEL
-  // ----------------------------------------------------
   function goToNextLevel() {
-    if (travelLockRef.current || level >= MAX_LEVEL) return;
-    const nextLevel = level + 1;
+    if (isDailyRef.current) {
+      setScreen("map");
+      return;
+    }
+    if (travelLockRef.current || levelRef.current >= MAX_LEVEL) return;
+    const nextLevel = levelRef.current + 1;
     if (nextLevel > unlockedRef.current) return;
     travelLockRef.current = true;
     setTraveling(true);
     const session = sessionRef.current;
-    travelTimerRef.current = setTimeout(() => {
+    travelTimerRef.current = window.setTimeout(() => {
       if (sessionRef.current !== session) {
         travelLockRef.current = false;
         setTraveling(false);
@@ -587,12 +552,8 @@ export default function useMemoryGame() {
       travelLockRef.current = false;
       setTraveling(false);
       startLevel(nextLevel, true);
-    }, 1200);
+    }, 900);
   }
-
-  // ----------------------------------------------------
-  // BACK TO MAP
-  // ----------------------------------------------------
   function backToMap() {
     clearTimers();
     sessionRef.current += 1;
@@ -617,46 +578,40 @@ export default function useMemoryGame() {
     hintsRef.current = null;
     setCombo(0);
     comboRef.current = 0;
+    setIsDaily(false);
+    isDailyRef.current = false;
+    setOverlay("none");
     setScreen("map");
   }
-
-  // ----------------------------------------------------
-  // STATS SCREEN
-  // ----------------------------------------------------
-  function openStats() {
-    clearTimers();
-    activeRef.current = false;
-    checkingRef.current = false;
-    setScreen("stats");
+  function enterGarden() {
+    setScreen("map");
   }
-
-  // ----------------------------------------------------
-  // RESTART LEVEL (new)
-  // ----------------------------------------------------
   function restartLevel() {
-    // Restart the current level, bypassing any lock (level is already unlocked)
-    startLevel(level, true);
+    if (isDailyRef.current) startDaily();
+    else startLevel(levelRef.current, true);
   }
-
-  // ----------------------------------------------------
-  // CLEANUP
-  // ----------------------------------------------------
-  useEffect(() => {
-    return () => {
-      clearTimers();
-      activeRef.current = false;
-    };
-  }, []);
-
-  // ----------------------------------------------------
-  // RETURN
-  // ----------------------------------------------------
+  function markTalkedToIris() {
+    persist({
+      ...saveRef.current,
+      stats: {
+        ...saveRef.current.stats,
+        talkedToIris: saveRef.current.stats.talkedToIris + 1,
+      },
+    });
+  }
+  const currentGarden =
+    GARDENS.find(
+      (g) => save.highestUnlocked >= g.from && save.highestUnlocked <= g.to,
+    ) ?? GARDENS[0];
   return {
+    hydrated,
+    save,
     screen,
-    highestUnlocked,
-    completedLevels,
-    stats,
+    overlay,
+    setOverlay,
+    setScreen,
     level,
+    isDaily,
     cards,
     flipped,
     matched,
@@ -674,12 +629,18 @@ export default function useMemoryGame() {
     hiddenMessage,
     traveling,
     config,
+    currentGarden,
     startLevel,
+    startDaily,
     handleCardClick,
     useHint,
     goToNextLevel,
     backToMap,
-    openStats,
-    restartLevel, // <-- added
+    enterGarden,
+    restartLevel,
+    patchSettings,
+    setName,
+    replaceSave,
+    markTalkedToIris,
   };
 }
